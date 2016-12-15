@@ -1,3 +1,7 @@
+GENERAL NOTES :
+	- Be mindful of patenting (for example SIFT)
+	- Compile OpenCV 3 for Python 3 including opencv_contrib
+
 2016 :
 
 	November :
@@ -13,4 +17,5 @@
 			- Did add.py, book.py, filter.py, edge.py, recognition.py, extraction.py
 
 		15th :
-			- Did edgeDetection.py, featureMatch.py
+			- Did edgeDetection.py, featureMatch.py, bgReduce.py, objDetect.py
+			- Reference for understanding SIFT in OpenCV : http://docs.opencv.org/3.1.0/da/df5/tutorial_py_sift_intro.html
