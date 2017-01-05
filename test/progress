@@ -1,6 +1,6 @@
 GENERAL NOTES :
 	- Be mindful of patenting (for example SIFT)
-	- Compile OpenCV 3 for Python 3 including opencv_contrib
+	- Compile OpenCV 3 for Python 3 including opencv_contrib http://www.pyimagesearch.com/2015/07/16/where-did-sift-and-surf-go-in-opencv-3/
 
 2016 :
 
@@ -19,3 +19,13 @@ GENERAL NOTES :
 		15th :
 			- Did edgeDetection.py, featureMatch.py, bgReduce.py, objDetect.py
 			- Reference for understanding SIFT in OpenCV : http://docs.opencv.org/3.1.0/da/df5/tutorial_py_sift_intro.html
+
+	January :
+
+		4th :
+			- Understood descriptors
+			- Reinstalled Python and OpenCV following problems with unavailable functions http://www.pyimagesearch.com/2015/07/20/install-opencv-3-0-and-python-3-4-on-ubuntu/
+			- Tested Sift and Surf on pictures, result not exactly the same as the example but still correct
+			- Sift uses difference of Gaussians (DoG) to isolate the frequency range that is the most present in the picture
+			- Did stitch_test.py and stitcher_test.py
+			- Excellent result !
