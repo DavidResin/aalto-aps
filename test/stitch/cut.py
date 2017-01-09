@@ -32,28 +32,44 @@ mask = cv2.bitwise_and(thresh1, thresh2)
 
 #get blurred inverted image
 diff = cv2.bitwise_and(diff, mask)
-ret, thresh = cv2.threshold(diff, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 diff = cv2.GaussianBlur(diff, (5, 5), 1.4)
+diffColor = cv2.cvtColor(diff, cv2.COLOR_GRAY2BGR)
 
+ret, thresh = cv2.threshold(diff, 220, 255, cv2.THRESH_BINARY)
 
-kernel = np.ones((3, 3), np.uint8)
-opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations = 2)
+########################################################################
+
+kernel = np.ones((3,3),np.uint8)
+opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
+
 bg = cv2.dilate(opening, kernel, iterations=3)
 
-#bg = diff
-fg = cv2.distanceTransform(diff, cv2.DIST_L2, 5)
-ret, fg = cv2.threshold(fg, .7 * fg.max(), 255, 0)
+dist_transform = cv2.distanceTransform(opening, cv2.DIST_L2, 5)
+ret, fg = cv2.threshold(dist_transform, .7 * dist_transform.max(), 255, 0)
 
 fg = np.uint8(fg)
 uk = cv2.subtract(bg, fg)
 
-ret, markers = cv2.connectedComponents(fg)
+#ret, markers = cv2.connectedComponents(fg)
+ret, markers = cv2.connectedComponents(opening)
 markers = markers + 1
+
 markers[uk == 255] = 0
-markers = cv2.watershed(img1, markers)
 
-img1[markers == -1] = [255, 0, 0]
+##############################################################################
 
+#run watershed algorithm
+markers = cv2.watershed(diffColor, markers)
+
+#draw the lines on the difference image
+diffColor[markers == -1] = [0, 0, 255]
+
+cv2.imshow("bg", bg)
+cv2.imshow("fg", fg)
+cv2.imshow("uk", uk)
 cv2.imshow("Markers", markers)
-cv2.imshow("Image", img1)
+cv2.imshow("opening", opening)
+cv2.imshow("dist", dist_transform)
+cv2.imshow("diff", diffColor)
+cv2.imshow("threshold", thresh)
 cv2.waitKey(0)
