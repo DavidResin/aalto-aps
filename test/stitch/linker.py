@@ -51,21 +51,18 @@ class Linker():
 		return pos
 
 	def edgesToTree(self, firstelem, firstdata, array, edge_table, data_table):
-		tree = TupleTree(0, firstelem + (firstdata,))
+		tree = TupleTree(0, firstelem + (None, firstdata, None,))
 		self.__edge_rec(tree, array.index(firstelem), array, edge_table, data_table)
 		return tree
 
 	def __edge_rec(self, tree, index, array, edge_table, data_table):
 		line = edge_table[index].tolist()
-		
+
 		while any(line):
 			temp = line.index(True)
 			pos = (index, temp)
 			self.__update(edge_table, pos, False)
 			(matches, matrix, status) = data_table[index][temp]
-			newTree = tree.makeChildOf(array[temp] + ((matches, np.dot(tree.data[3][1], matrix), status),))
-			print(np.dot(tree.data[3][1], matrix))
-			print(tree.data[3][1])
-			print(matrix)
+			newTree = tree.makeChildOf(array[temp] + (matches, np.dot(matrix, tree.data[4]), status),)
 			line = edge_table[index].tolist()
 			self.__edge_rec(newTree, temp, array, edge_table, data_table)

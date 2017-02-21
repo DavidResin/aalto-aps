@@ -21,6 +21,7 @@ class Stitcher:
 
 		(matches, matrix, status) = ransac
 		result = cv2.warpPerspective(img1, matrix, (img1.shape[1] + img2.shape[1], img1.shape[0]))
+		print(matrix)
 		result[0:img2.shape[0], 0:img2.shape[1]] = img2
 
 		if showMatches:

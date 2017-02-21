@@ -27,7 +27,7 @@ image_count = len(filenames)
 for f in filenames:
 	image = cv2.imread(f)
 	small = imutils.resize(image, width=400)
-	element = (f, image, stitcher.detectAndDescribe(small))
+	element = (f, small, stitcher.detectAndDescribe(small))
 	images.append(element)
 
 	if mainImage is None and args["main"] and re.search("[/.*|^]" + args["main"] + "$", f):
@@ -41,13 +41,12 @@ if mainImage is None:
 ransacArray = np.empty((image_count, image_count), dtype=object)
 
 for i in range(image_count):
-	for j in range(i, image_count):
+	for j in range(image_count):
 		if i == j:
-			ransacArray[i][i] = (None, None, [])
+			temp = (None, None, [])
 		else:
-			temp = stitcher.ransac(images[i][2], images[j][2])
-			ransacArray[i][j] = temp
-			ransacArray[j][i] = temp
+			temp = stitcher.ransac(images[j][2], images[i][2])
+		ransacArray[i][j] = temp
 
 # We find the best edges and build a tree using the results
 linker = Linker()
@@ -58,20 +57,25 @@ reduced_set = []
 iw = Image_Warp()
 
 for elem in data_set:
-	transformed = iw.homography_warp(elem[1], elem[3][1])
+	transformed = iw.homography_warp(elem[1], elem[4])
 	reduced_set.append(transformed)
 
 positioned_images = iw.position_images(reduced_set)
 
 final_images = []
+biggest = [0, 0]
 
 for p in positioned_images:
 	(img, trans) = p
 	final_images.append(iw.apply_translation(img, trans))
 
+	for i in range(2):
+		if img.shape[:2][i] > biggest[i]:
+			biggest[i] = img.shape[:2][i]
+
 result = final_images[0]
 
 for i in final_images[1:]:
-	result = iw.copy_over(result, i)
+	result = iw.copy_over(result, i, tuple(biggest))
 
 cv2.imwrite("test.jpg", result)
