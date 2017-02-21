@@ -2,12 +2,19 @@ import cv2
 import numpy as np
 
 class Stitcher:
+	def ransac(self, descr1, descr2, ratio=0.75, reprojThresh=4.0):
+		(kp1, feat1) = descr1
+		(kp2, feat2) = descr2
+		return self.matchKeypoints(kp1, kp2, feat1, feat2, ratio, reprojThresh)
+
 	def stitch(self, imgs, ratio=0.75, reprojThresh=4.0, showMatches=False):
 		(img2, img1) = imgs
-		(kp1, feat1) = self.detectAndDescribe(img1)
-		(kp2, feat2) = self.detectAndDescribe(img2)
+		descr1 = self.detectAndDescribe(img1)
+		descr2 = self.detectAndDescribe(img2)
+		(kp1, feat1) = descr1
+		(kp2, feat2) = descr2
 
-		ransac = self.matchKeypoints(kp1, kp2, feat1, feat2, ratio, reprojThresh)
+		ransac = self.ransac(descr1, descr2, ratio, reprojThresh)
 
 		if ransac is None:
 			return None

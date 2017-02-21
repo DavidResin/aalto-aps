@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from matplotlib import pyplot as plt
 
-img = cv2.imread('panorama/diff.jpg')
+img = cv2.imread('panorama/coins.jpg')
 b,g,r = cv2.split(img)
 rgb_img = cv2.merge([r,g,b])
 
@@ -10,7 +10,7 @@ gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 ret, thresh = cv2.threshold(gray,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
 
 # noise removal
-kernel = np.ones((2,2),np.uint8)
+kernel = np.ones((3, 3),np.uint8)
 #opening = cv2.morphologyEx(thresh,cv2.MORPH_OPEN,kernel, iterations = 2)
 closing = cv2.morphologyEx(thresh,cv2.MORPH_CLOSE,kernel, iterations = 2)
 
@@ -35,6 +35,7 @@ plt.title("Dilation"), plt.xticks([]), plt.yticks([])
 '''
 plt.subplot(111),plt.imshow(dist_transform, 'gray')
 plt.title("Distance Transform"), plt.xticks([]), plt.yticks([])
+
 '''
 plt.subplot(326),plt.imshow(sure_fg, 'gray')
 plt.title("Thresholding"), plt.xticks([]), plt.yticks([])
