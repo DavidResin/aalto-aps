@@ -1,6 +1,53 @@
 GENERAL NOTES :
 	- Be mindful of patenting (for example SIFT)
-	- Compile OpenCV 3 for Python 3 including opencv_contrib http://www.pyimagesearch.com/2015/07/16/where-did-sift-and-surf-go-in-opencv-3/
+	- Compile OpenCV 3 for Python 3 including opencv_contrib 
+		+ http://www.pyimagesearch.com/2015/07/16/where-did-sift-and-surf-go-in-opencv-3/
+	- Start virtualenv :
+		$ source ~/.virtualenvs/cv/bin/activate
+		OR
+		$ workon cv
+
+SETUP :
+	http://www.pyimagesearch.com/2015/07/20/install-opencv-3-0-and-python-3-4-on-ubuntu/
+
+	$ sudo apt-get update
+	$ sudo apt-get upgrade
+	$ sudo apt-get install build-essential cmake git pkg-config
+	$ sudo apt-get install libjpeg8-dev libtiff4-dev libjasper-dev libpng12-dev
+	$ sudo apt-get install libavcodec-dev libavformat-dev libswscale-dev libv4l-dev
+	$ sudo apt-get install libgtk2.0-dev
+	$ sudo apt-get install libatlas-base-dev gfortran
+	$ wget https://bootstrap.pypa.io/get-pip.py
+	$ sudo pip3 install virtualenv virtualenvwrapper
+	$ export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3
+	$ export WORKON_HOME=$HOME/.virtualenvs
+	$ source /usr/local/bin/virtualenvwrapper.sh
+	$ virtualenv cv
+	$ cd ~
+	$ git clone https://github.com/Itseez/opencv.git
+	$ cd opencv
+	$ git checkout 3.1.0
+	$ cd ~
+	$ git clone https://github.com/Itseez/opencv_contrib.git
+	$ cd opencv_contrib
+	$ git checkout 3.1.0
+	$ cd ~/opencv
+	$ mkdir build
+	$ cd build
+	$ cmake -D CMAKE_BUILD_TYPE=RELEASE \
+	$ >>> -D CMAKE_INSTALL_PREFIX=/usr/local \
+	$ >>> -D INSTALL_C_EXAMPLES=OFF \
+	$ >>> -D INSTALL_PYTHON_EXAMPLES=ON \
+	$ >>> -D OPENCV_EXTRA_MODULES_PATH=~/opencv_contrib/modules \
+	$ >>> -D BUILD_EXAMPLES=ON ..
+	$ make -j4
+	$ sudo make install
+	$ sudo ldconfig
+	$ cd ~/.virtualenvs/cv/lib/python3.4/site-packages/
+	$ ln -s /usr/local/lib/python3.4/site-packages/cv2.cpython-34m.so cv2.so
+	$ workon cv
+	$ sudo rm -rf ~/.cache/pip/
+	$ pip install numpy, scipy, matplotlib, imutils
 
 2016 :
 
@@ -13,19 +60,66 @@ GENERAL NOTES :
 	December :
 
 		13th :
-			- Managed to get back to work. Starting over on https://pythonprogramming.net/image-arithmetics-logic-python-opencv-tutorial/
+			- Managed to get back to work. Starting over on
+				+ https://pythonprogramming.net/image-arithmetics-logic-python-opencv-tutorial/
 			- Did add.py, book.py, filter.py, edge.py, recognition.py, extraction.py
 
 		15th :
 			- Did edgeDetection.py, featureMatch.py, bgReduce.py, objDetect.py
-			- Reference for understanding SIFT in OpenCV : http://docs.opencv.org/3.1.0/da/df5/tutorial_py_sift_intro.html
+			- Reference for understanding SIFT in OpenCV : 
+				+ http://docs.opencv.org/3.1.0/da/df5/tutorial_py_sift_intro.html
 
 	January :
 
 		4th :
 			- Understood descriptors
-			- Reinstalled Python and OpenCV following problems with unavailable functions http://www.pyimagesearch.com/2015/07/20/install-opencv-3-0-and-python-3-4-on-ubuntu/
-			- Tested Sift and Surf on pictures, result not exactly the same as the example but still correct
+			- Reinstalled Python and OpenCV following problems with unavailable functions 
+				+ http://www.pyimagesearch.com/2015/07/20/install-opencv-3-0-and-python-3-4-on-ubuntu/
+			- Tested Sift and Surf feature detection on pictures, result not exactly the same as the example but still correct
 			- Sift uses difference of Gaussians (DoG) to isolate the frequency range that is the most present in the picture
+			- Resource : 
+				+ http://web.stanford.edu/class/cs231m/lectures/lecture-5-stitching-blending.pdf
 			- Did stitch_test.py and stitcher_test.py
 			- Excellent result !
+
+		5th :
+			- Resource : 
+				+ http://www.macs.hw.ac.uk/bmvc2006/papers/259.pdf
+			- Segmentation good after Gaussian low-pass of 1.4 pixels
+			- Inverted difference, watershed regions and minimal cut
+			
+		6th :
+			- Isolated the intersection and low-pass Gauss-blurred with SD = 1.4
+			- Interesting resources : 
+				+ http://www.crisluengo.net/index.php/archives/76
+				+ http://www.nitc.ac.in/electrical/ipg/python/opencv-python-tutroals.pdf
+			- Goal of the day : figure out how to apply watershed to this situation
+			- Tried reproducing online examples to no avail so far, markers image is empty, my background/foreground computation seems to be the problem
+
+		7th :
+			- Interesting resources :
+				+ ftp://ftp.pmel.noaa.gov/vents/Buck/NWROTA_2010/bubble_plume/python_vision.pdf
+			- cv2.watershed() uses Meyer's flooding algorithm
+			- Need to define the markers with connected components
+			- Next goal : copy the code with the coins to figure out how it works
+
+		8th :
+			- Resources :
+				+ http://www.bogotobogo.com/python/OpenCV_Python/python_opencv3_Image_Watershed_Algorithm_Marker_Based_Segmentation_2.php
+
+		9th :
+			- Finally made distanceTransform work ; on to the end of the algorithm
+
+	February :
+		16th :
+			- Back to the project
+			- The markers don't work. Need to figure out why.
+
+		17th :
+			- Problems fixed, gotta find some kind of logic to make the tree
+
+		18th :
+			- http://stackoverflow.com/questions/13063201/how-to-show-the-whole-image-when-using-opencv-warpperspective
+
+		21st :
+			- http://stackoverflow.com/questions/22220253/cvwarpperspective-only-shows-part-of-warped-image
