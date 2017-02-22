@@ -27,7 +27,7 @@ image_count = len(filenames)
 for f in filenames:
 	image = cv2.imread(f)
 	small = imutils.resize(image, width=400)
-	element = (f, small, stitcher.detectAndDescribe(small))
+	element = (f, image, stitcher.detectAndDescribe(image))
 	images.append(element)
 
 	if mainImage is None and args["main"] and re.search("[/.*|^]" + args["main"] + "$", f):
@@ -70,8 +70,9 @@ for p in positioned_images:
 	final_images.append(iw.apply_translation(img, trans))
 
 	for i in range(2):
-		if img.shape[:2][i] > biggest[i]:
-			biggest[i] = img.shape[:2][i]
+		temp = img.shape[:2][i] + trans[i]
+		if temp > biggest[i]:
+			biggest[i] = temp
 
 result = final_images[0]
 

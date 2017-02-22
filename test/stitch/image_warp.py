@@ -55,7 +55,6 @@ class Image_Warp():
 		for i in range(length):
 			tempX = int(extremas[0] - from_corner[i][0])
 			tempY = int(extremas[1] - from_corner[i][1])
-			print(tempX, tempY)
 
 			new_data.append((data_set[i][0], (tempX, tempY)))
 
@@ -77,7 +76,7 @@ class Image_Warp():
 		dst_big = cv2.warpAffine(dst, matrix, shape)
 
 		src_grey = cv2.cvtColor(src_big, cv2.COLOR_BGR2GRAY)
-		ret, mask = cv2.threshold(src_grey, 10, 255, cv2.THRESH_BINARY)
+		ret, mask = cv2.threshold(src_grey, 1, 255, cv2.THRESH_BINARY)
 
 		new_src = cv2.bitwise_and(src_big, src_big, mask=mask)
 		new_dst = cv2.bitwise_and(dst_big, dst_big, mask=cv2.bitwise_not(mask))
