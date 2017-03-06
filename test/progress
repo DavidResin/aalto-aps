@@ -123,3 +123,5 @@ SETUP :
 
 		21st :
 			- http://stackoverflow.com/questions/22220253/cvwarpperspective-only-shows-part-of-warped-image
+			- The matrix is correct
+			- The boundary box is correct
