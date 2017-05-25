@@ -1,12 +1,9 @@
-import argparse, cv2, imutils, glob, re, sys, stitcher
+import argparse, cv2, glob, image_warp, imutils, linker, re, stitcher, sys
 import numpy as np
 
 from collections import deque
 from image_data import Image_Data
-from image_warp import Image_Warp
-from linker import Linker, ImageLinker
 from matplotlib import pyplot as plt
-from tree import TupleTree
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-f", "--folder", required=True, help="Path to the image folder")
@@ -76,36 +73,12 @@ for i in range(image_count):
 				matchArray.append(match)
 
 # We find the best edges and build a tree using the results
-linker = ImageLinker()
 edge_array = linker.solve(ransacArray, 2)
 tree = linker.edgesToTree(firstelem=mainImage, array=images, edge_table=edge_array, data_table=ransacArray)
-data_set = tree.flatten()
-reduced_set = []
-'''
-iw = Image_Warp()
+images = tree.flatten()
 
-for elem in data_set:
-	transformed = iw.homography_warp(elem[1], elem[4])
-	reduced_set.append(transformed)
-
-positioned_images = iw.position_images(reduced_set)
-
-final_images = []
-biggest = [0, 0]
-
-for p in positioned_images:
-	(img, trans) = p
-	final_images.append(iw.apply_translation(img, trans))
-
-	for i in range(2):
-		temp = img.shape[:2][i] + trans[i]
-		if temp > biggest[i]:
-			biggest[i] = temp
-
-result = final_images[0]
-
-for i in final_images[1:]:
-	result = iw.copy_over(result, i, tuple(biggest))
-
+image_warp.homography_warp(images)
+image_warp.position_images(images)
+image_warp.apply_translation(images)
+result = image_warp.copy_over(images[::-1])
 cv2.imwrite("test.jpg", result)
-'''

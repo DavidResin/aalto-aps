@@ -17,6 +17,9 @@ class Image_Data():
 		self.descriptor = stitcher.detectAndDescribe(self.image_resized)
 		self.correspondances = [[] for i in range(len(self.descriptor[0]))]
 		self.matrix = None
+		self.image_transformed = None
+		self.offset = None
+		self.new_size = None
 
 	def cross(self, other, ratio=0.75, reprojThresh=4.0):
 		kp1, feat1 = self.descriptor
@@ -24,7 +27,7 @@ class Image_Data():
 
 		crossdata = stitcher.matchKeypoints(kp1, kp2, feat1, feat2, ratio, reprojThresh)
 
-		if crossdata is not None:
+		if crossdata is not None and crossdata[2] is not None:
 			(matches, matrix, status) = crossdata
 
 			for ((m1, m2), s) in zip(matches, status):
