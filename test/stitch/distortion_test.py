@@ -17,30 +17,30 @@ def lensCorrect(x, y, halfW, halfH, cR, theta_inv, zoomX, zoomY):
 
 	theta = factor(int(cX * zoomX), int(cY * zoomY), cR)
 
-	newX = (halfW + theta * cX * theta_inv) * zoomX
-	newY = (halfH + theta * cY * theta_inv) * zoomY
+	newX = int(halfW + theta * cX * theta_inv) * zoomX
+	newY = int(halfH + theta * cY * theta_inv) * zoomY
 
 	return (int(newX), int(newY))
 
-def paddings(w, h, cR):
+def paddings(w, h, strength):
+	cR = strength / math.sqrt(w**2 + h**2)
 	theta_inv = 1 / factor(w / 2, h / 2, cR)
 	padX, _ = lensCorrect(0, h / 2, w / 2, h / 2, cR, theta_inv, 1, 1)
 	_, padY = lensCorrect(w / 2, 0, w / 2, h / 2, cR, theta_inv, 1, 1)
 
-	return (-int(padX), -int(padY), theta_inv)
+	return (-int(padX), -int(padY), theta_inv, cR)
 
 zoom = 1
-image_orig = cv2.imread("distortion_test.jpg")
+image_orig = cv2.imread("distortion.jpg")
 h_orig, w_orig, ch = image_orig.shape
 image = cv2.resize(image_orig, (int(zoom * w_orig), int(zoom * h_orig)))
 h, w, ch = image.shape
 halfW = w / 2
 halfH = h / 2
 
-strength = 3
-correctionRadius = strength / math.sqrt(w**2 + h**2)
+strength = -1
 
-padX, padY, theta_inv = paddings(w, h, correctionRadius)
+padX, padY, theta_inv, cR = paddings(w, h, strength)
 
 newW = w + 2 * padX
 newH = h + 2 * padY
@@ -60,16 +60,21 @@ newImage = np.zeros((newH, newW, ch), np.uint8)
 padXb = int((newW - w_orig) / 2)
 padYb = int((newH - h_orig) / 2)
 
+if strength > 0:
+	log = math.ceil(math.log2(strength))
+else:
+	log = 1
+
 for x in range(newW):
 	for y in range(newH):
-		newX, newY = lensCorrect(x, y, newHalfW, newHalfH, correctionRadius, theta_inv, antiZoomX, antiZoomY)
-		newImage[padY + newY][padX + newX] = image[y][x]
-		if x + 2 < newW:
-			newImage[padY + newY][padX + newX + 1] = image[y][x]
-		if y + 2 < newH:
-			newImage[padY + newY + 1][padX + newX] = image[y][x]
-		if x + 2 < newW and y + 2 < newH:
-			newImage[padY + newY + 1][padX + newX + 1] = image[y][x]
+		newX, newY = lensCorrect(x, y, newHalfW, newHalfH, cR, theta_inv, antiZoomX, antiZoomY)
+		tempX = padX + newX
+		tempY = padY + newY
+		
+		for i in range(log):
+			for j in range(log):
+				if tempX + i < newW and tempY + j < newH:
+					newImage[tempY + j][tempX + i] = image[y][x]
 
 for x in range(w_orig):
 	newImage[padYb][padXb + x] = [255, 255, 255]

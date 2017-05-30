@@ -1,20 +1,49 @@
-def lensCorrect(x, y, halfW, halfH, cR):
-	cX = x - halfW
-	cY = y - halfH
-	ratio = math.sqrt(cX**2 + cY**2) * cR
+from least_squares import LSQ
+import scipy.optimize as opt
 
-	if ratio == 0:
-		theta = 1;
-	else:
-		theta = math.atan(ratio) / ratio
+class Adjuster:
+	def __init__(self, images, matches):
+		self.images = images
+		self.matches = matches
+		self.lsq = LSQ(images, matches)
 
-	newX = halfW + theta * cX
-	newY = halfH + theta * cY
+		self.init_zoom_value = 1
+		self.init_lens_value = 0
+		self.zoom_value = self.init_zoom_value
+		self.lens_value = self.init_lens_value
+		self.counter_init = 5
+		self.lens_limit = 6
 
-	return (int(newX), int(newY))
+	def global_adjust(self):
+		switch = True
+		zoom_contrib = True
+		lens_contrib = True
 
-def paddings(w, h, cR):
-	padX, _ = lensCorrect(0, h / 2, w / 2, h / 2, cR)
-	_, padY = lensCorrect(w / 2, 0, w / 2, h / 2, cR)
+		while zoom_contrib or lens_contrib:
+			temp = opt.minimize(self.bulk_lens, self.lens_value, method='Nelder-Mead')
 
-	return (-int(padX), -int(padY))
+			if temp == self.lens_value:
+				lens_contrib = False
+			else:
+				lens_contrib = True
+				self.lens_value = temp
+
+			temp = opt.minimize(self.bulk_zoom, self.zoom_value, method='Nelder-Mead')
+
+			if temp == self.zoom_value:
+				zoom_contrib = False
+			else:
+				zoom_contrib = True
+				self.zoom_value = temp
+
+	def bulk_lens(self, value):
+		for i in self.images:
+			i.update_params(value, self.zoom_value)
+
+		return self.lsq.total()
+
+	def bulk_zoom(self, value):
+		for i in self.images:
+			i.update_params(self.lens_value, value)
+
+		return self.lsq.total()

@@ -92,16 +92,3 @@ def copy_over(images):
 		img = cv2.add(src, img)
 
 	return img
-	'''
-	matrix = np.float32(np.array([[1, 0, 0], [0, 1, 0]]))
-
-	src_big = cv2.warpAffine(src, matrix, shape)
-	dst_big = cv2.warpAffine(dst, matrix, shape)
-
-	src_grey = cv2.cvtColor(src_big, cv2.COLOR_BGR2GRAY)
-	ret, mask = cv2.threshold(src_grey, 1, 255, cv2.THRESH_BINARY)
-
-	new_src = cv2.bitwise_and(src_big, src_big, mask=mask)
-	new_dst = cv2.bitwise_and(dst_big, dst_big, mask=cv2.bitwise_not(mask))
-	return cv2.add(new_src, new_dst)
-	'''

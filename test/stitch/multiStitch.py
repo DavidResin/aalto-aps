@@ -1,8 +1,11 @@
-import argparse, cv2, glob, image_warp, imutils, linker, re, stitcher, sys
+import argparse, cv2, glob, imutils, linker, re, stitcher, sys
+import image_warp as iw
 import numpy as np
 
 from collections import deque
+from bundle_adjust import Adjuster
 from image_data import Image_Data
+from least_squares import LSQ
 from matplotlib import pyplot as plt
 
 ap = argparse.ArgumentParser()
@@ -77,8 +80,11 @@ edge_array = linker.solve(ransacArray, 2)
 tree = linker.edgesToTree(firstelem=mainImage, array=images, edge_table=edge_array, data_table=ransacArray)
 images = tree.flatten()
 
-image_warp.homography_warp(images)
-image_warp.position_images(images)
-image_warp.apply_translation(images)
-result = image_warp.copy_over(images[::-1])
+adjuster = Adjuster(images, matchArray)
+adjuster.global_adjust()
+
+iw.homography_warp(images)
+iw.position_images(images)
+iw.apply_translation(images)
+result = iw.copy_over(images[::-1])
 cv2.imwrite("test.jpg", result)
