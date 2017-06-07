@@ -47,13 +47,3 @@ class ImageTree():
 				return c
 
 		return None
-
-	def flatten(self):
-		seq = []
-		self.__flatten_rec(seq)
-		return seq
-
-	def __flatten_rec(self, seq):
-		seq.append(self.data)
-		for c in self.children:
-			c.__flatten_rec(seq)

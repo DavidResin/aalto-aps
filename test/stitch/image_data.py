@@ -1,4 +1,4 @@
-import copy, cv2, imutils, stitcher
+import copy, cv2, imutils, math, stitcher
 import numpy as np
 import distortion as dist
 
@@ -48,18 +48,55 @@ class Image_Data():
 
 		self.image_resized = imutils.resize(self.image_orig, width=int(w * self.ratio))
 		self.image_size = self.image_resized.shape[:2]
+		self.channels = self.image_resized.shape[2]
+		self.mask_resized = np.zeros(self.image_size, dtype=np.uint8).fill(255)
 		self.descriptor = stitcher.detectAndDescribe(self.image_resized)
 		self.correspondances = [[] for i in range(len(self.descriptor[0]))]
+		self.lens_image = None
+		self.lens_mask = None
 		self.matrix = None
 		self.image_transformed = None
+		self.mask_transformed = None
 		self.offset = None
 		self.new_size = None
-
+		self.center = None
+		
 		self.params = Image_Params()
 		self.temp_params = Image_Params()
 
 	def apply_changes(self):
 		self.params = copy.deepcopy(self.temp_params)
+
+	def distort(self):
+		params = self.params
+		padX, padY = params.lens_offset
+
+		newHalfW = params.newW / 2
+		newHalfH = params.newH / 2
+
+		image = cv2.resize(self.image_resized, (params.newW, params.newH))
+		newImage = np.zeros((params.newH, params.newW, self.channels), np.uint8)
+		newMask = np.zeros((params.newH, params.newW, 1), np.uint8)
+
+		if params.lens_strength > 0:
+			log = math.ceil(math.log2(params.lens_strength + 2))
+		else:
+			log = 1
+
+		for x in range(params.newW):
+			for y in range(params.newH):
+				newX, newY = dist.lensCorrectParams(x, y, params)
+				tempX = padX + newX
+				tempY = padY + newY
+				
+				for i in range(log):
+					for j in range(log):
+						if tempX + i < params.newW and tempY + j < params.newH:
+							newImage[tempY + j][tempX + i] = image[y][x]
+							newMask[tempY + j][tempX + i] = 255
+	
+		self.lens_image = imutils.resize(newImage, width=int(params.newW * params.zoom_strength))
+		self.lens_mask = imutils.resize(newMask, width=int(params.newW * params.zoom_strength))
 
 	def reset_temp_changes(self):
 		self.temp_params = copy.deepcopy(self.params)

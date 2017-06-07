@@ -10,6 +10,7 @@ class LSQ:
 	def values(self):
 		return [self.distance(i) for i in range(len(self.matches))]
 
+	#MOVE ALL FEATURES BEFORE
 	def distance(self, matchIndex):
 		imIdx1, imIdx2, featIdx1, featIdx2 = self.matches[matchIndex]
 		feat1 = self.moveFeature(imIdx1, featIdx1)
@@ -26,5 +27,4 @@ class LSQ:
 		return image_warp.from_homogeneous(np.atleast_2d(image.matrix.dot(np.transpose(vector))).T)
 
 	def total(self):
-		self.values = self.values()
-		return sum(self.values)
+		return sum(self.values())

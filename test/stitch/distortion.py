@@ -16,8 +16,8 @@ def lensCorrectParams(x, y, params):
 	halfH = params.image_size[0] / 2
 	cR = params.correction_radius
 	theta_inv = params.theta_inv
-	zoomX =  params.lens_zoomX
-	zoomY =  params.lens_zoomY
+	zoomX = params.lens_zoomX * params.zoom_strength
+	zoomY = params.lens_zoomY * params.zoom_strength
 
 	return lensCorrect(x, y, halfW, halfH, cR, theta_inv, zoomX, zoomY)
 
@@ -38,3 +38,17 @@ def paddings(w, h, strength):
 	_, padY = lensCorrect(w / 2, 0, w / 2, h / 2, cR, theta_inv, 1, 1)
 
 	return (-int(padX), -int(padY), theta_inv, cR)
+
+def kCorrect(x, y, halfW, halfH, f, ks):
+	r2 = (x - halfW)**2 + (y - halfH)**2
+	coeff = 1
+
+	for i in range(len(ks)):
+		coeff += ks[i] * r2**(i + 1)
+
+	coeff *= f
+
+	xF = x * coeff
+	yF = y * coeff
+
+	return int(xF), int(yF)

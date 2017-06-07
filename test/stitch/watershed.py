@@ -1,85 +1,99 @@
-#!/usr/bin/env python
-
-'''
-Watershed segmentation
-=========
-
-This program demonstrates the watershed segmentation algorithm
-in OpenCV: watershed().
-
-Usage
------
-watershed.py [image filename]
-
-Keys
-----
-  1-7   - switch marker color
-  SPACE - update segmentation
-  r     - reset
-  a     - toggle autoupdate
-  ESC   - exit
-
-'''
-
-
-# Python 2/3 compatibility
-from __future__ import print_function
-
+import cv2, imutils
 import numpy as np
-import cv2
-from common import Sketcher
+from matplotlib import pyplot as plt
 
-class App:
-    def __init__(self, fn):
-        self.img = cv2.imread(fn)
-        if self.img is None:
-            raise Exception('Failed to load image file: %s' % fn)
+def outerEdge(image):
+	kernel = np.array([[0, .25, 0], [.25, 0, .25], [0, .25, 0]])
+	temp1 = cv2.filter2D(image, -1, kernel)
+	temp2 = cv2.bitwise_and(temp1, cv2.bitwise_not(image))
+	ret, border = cv2.threshold(temp2, 10, 255, cv2.THRESH_BINARY)
+	return border
 
-        h, w = self.img.shape[:2]
-        self.markers = np.zeros((h, w), np.int32)
-        self.markers_vis = self.img.copy()
-        self.cur_marker = 1
-        self.colors = np.int32( list(np.ndindex(2, 2, 2)) ) * 255
+def innerEdge(image):
+	reverse = cv2.bitwise_not(image)
+	return outerEdge(reverse)
 
-        self.auto_update = True
-        self.sketch = Sketcher('img', [self.markers_vis, self.markers], self.get_colors)
+def expand(image, index):
+	temp = np.zeros(image.shape, dtype=np.uint8)
+	temp[image == index] = 255
+	temp = outerEdge(temp)
+	image[temp == 255] = index
 
-    def get_colors(self):
-        return list(map(int, self.colors[self.cur_marker])), self.cur_marker
+def distance(p1, p2):
+	x1, y1 = p1
+	x2, y2 = p2
 
-    def watershed(self):
-        m = self.markers.copy()
-        cv2.watershed(self.img, m)
-        overlay = self.colors[np.maximum(m, 0)]
-        vis = cv2.addWeighted(self.img, 0.5, overlay, 0.5, 0.0, dtype=cv2.CV_8UC3)
-        cv2.imshow('watershed', vis)
+	return (x1 - x2)**2 + (y1 - y2)**2
 
-    def run(self):
-        while True:
-            ch = 0xFF & cv2.waitKey(50)
-            if ch == 27:
-                break
-            if ch >= ord('1') and ch <= ord('7'):
-                self.cur_marker = ch - ord('0')
-                print('marker: ', self.cur_marker)
-            if ch == ord(' ') or (self.sketch.dirty and self.auto_update):
-                self.watershed()
-                self.sketch.dirty = False
-            if ch in [ord('a'), ord('A')]:
-                self.auto_update = not self.auto_update
-                print('auto_update if', ['off', 'on'][self.auto_update])
-            if ch in [ord('r'), ord('R')]:
-                self.markers[:] = 0
-                self.markers_vis[:] = self.img
-                self.sketch.show()
-        cv2.destroyAllWindows()
+def watershed(image, mask, center1, center2):
+	kernel = np.ones((3, 3), np.uint8)
+	imageColor = cv2.cvtColor(image,cv2.COLOR_GRAY2BGR)
 
+	ret, thresh = cv2.threshold(image, 1, 255, cv2.THRESH_BINARY)
+	opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
+	sure_bg = cv2.dilate(opening, kernel, iterations=3)
+	dist_transform = cv2.distanceTransform(opening, cv2.DIST_L2, 5)
+	ret, sure_fg = cv2.threshold(dist_transform, 0.0001 * dist_transform.max(), 255, 0)
+	sure_fg = np.uint8(sure_fg)
+	unknown = cv2.subtract(sure_bg, sure_fg)
 
-if __name__ == '__main__':
-    import sys
-    try:
-        fn = sys.argv[1]
-    except:
-        fn = '../data/fruits.jpg'
-    print(__doc__)
-    App(fn).run()
+	ret, markers = cv2.connectedComponents(sure_fg)
+	markers = markers + 1
+	markers[unknown == 255] = 0
+	markers = cv2.watershed(imageColor, markers)
+	markers[mask == 0] = -1
+
+	cut_mask = np.zeros(mask.shape, dtype=np.uint8)
+	cut_mask[markers == 0] = 255
+
+	dots = []
+	i = 0
+
+	while dots or i == 0:
+		if dots:
+			count, sumX, sumY = 0, 0, 0
+		
+			for (x, y) in dots:
+				count += 1
+				sumX += x
+				sumY += y
+
+			expand(markers, i)
+			center = (int(round(sumX / count)), int(round(sumY / count)))
+			
+			if distance(center, center1) < distance(center, center2):
+				cut_mask[markers == i] = 255
+
+		i += 1
+		dots = list(zip(*np.where(markers == i)))
+
+	return cv2.bitwise_and(mask, cut_mask), cv2.bitwise_and(mask, cv2.bitwise_not(cut_mask))
+
+def center(mask1, mask2):
+	points1 = list(zip(*np.where(cv2.bitwise_and(mask1, outerEdge(mask2)) == 255)))
+	center1 = tuple(map(lambda y: int(round(sum(y) / float(len(y)))), zip(*points1)))
+	points2 = list(zip(*np.where(cv2.bitwise_and(mask2, outerEdge(mask1)) == 255)))
+	center2 = tuple(map(lambda y: int(round(sum(y) / float(len(y)))), zip(*points2)))
+	return center1, center2
+
+def cut(image1, image2, mask1, mask2):
+	gray1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+	gray2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
+
+	center1, center2 = center(mask1, mask2)
+
+	mask = cv2.bitwise_and(mask1, mask2)
+	diff = cv2.absdiff(gray1, gray2)
+	diff = cv2.bitwise_and(mask, diff)
+
+	c1, c2 = watershed(diff, mask, center1, center2)
+	'''
+	a = imutils.resize(c1, width=1000)
+	cv2.imshow("test", a)
+	cv2.waitKey(0)
+
+	a = imutils.resize(c2, width=1000)
+	cv2.imshow("test", a)
+	cv2.waitKey(0)
+	'''
+	return c1, c2

@@ -9,41 +9,28 @@ class Adjuster:
 
 		self.init_zoom_value = 1
 		self.init_lens_value = 0
-		self.zoom_value = self.init_zoom_value
-		self.lens_value = self.init_lens_value
-		self.counter_init = 5
-		self.lens_limit = 6
+
+		self.lens_bounds = (0, 6)
+		self.zoom_bounds = (0, None)
 
 	def global_adjust(self):
-		switch = True
-		zoom_contrib = True
-		lens_contrib = True
+		# since it is bounded, we can use : 'L-BFGS-B', 'TNC' and 'SLSQP'
+		result = opt.minimize(self.bulk, (self.init_lens_value, self.init_zoom_value), method='TNC', bounds=((0, 6), (0, None)))
+		print(result.x, result.success, result.nit)
 
-		while zoom_contrib or lens_contrib:
-			temp = opt.minimize(self.bulk_lens, self.lens_value, method='Nelder-Mead')
+		self.lens_value, self.zoom_value = result.x
+		self.bulk((0, 1))
+		self.apply()
 
-			if temp == self.lens_value:
-				lens_contrib = False
-			else:
-				lens_contrib = True
-				self.lens_value = temp
-
-			temp = opt.minimize(self.bulk_zoom, self.zoom_value, method='Nelder-Mead')
-
-			if temp == self.zoom_value:
-				zoom_contrib = False
-			else:
-				zoom_contrib = True
-				self.zoom_value = temp
-
-	def bulk_lens(self, value):
+	def bulk(self, data):
+		#print("bulk", data)
+		lens_value, zoom_value = data
 		for i in self.images:
-			i.update_params(value, self.zoom_value)
+			i.update_params(lens_value, zoom_value)
 
 		return self.lsq.total()
 
-	def bulk_zoom(self, value):
+	def apply(self):
 		for i in self.images:
-			i.update_params(self.lens_value, value)
-
-		return self.lsq.total()
+			i.apply_changes()
+			i.distort()

@@ -26,9 +26,6 @@ image_count = len(filenames)
 for i in range(len(filenames)):
 	f = filenames[i]
 	element = Image_Data(i, f, 0.5)
-	#image = cv2.imread(f)
-	#small = imutils.resize(image, width=400)
-	#element = (f, image, stitcher.detectAndDescribe(image))
 	images.append(element)
 
 	if mainImage is None and args["main"] and re.search("[/.*|^]" + args["main"] + "$", f):
@@ -75,10 +72,10 @@ for i in range(image_count):
 			if match not in matchArray:
 				matchArray.append(match)
 
+
 # We find the best edges and build a tree using the results
 edge_array = linker.solve(ransacArray, 2)
 tree = linker.edgesToTree(firstelem=mainImage, array=images, edge_table=edge_array, data_table=ransacArray)
-images = tree.flatten()
 
 adjuster = Adjuster(images, matchArray)
 adjuster.global_adjust()
@@ -87,4 +84,5 @@ iw.homography_warp(images)
 iw.position_images(images)
 iw.apply_translation(images)
 result = iw.copy_over(images[::-1])
+
 cv2.imwrite("test.jpg", result)

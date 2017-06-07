@@ -74,6 +74,15 @@ cut = np.array(
 	[0, 255, 0, 0, 0, 0, 0, 0, 0, 0],
 	[0, 0, 0, 0, 0, 0, 0, 0, 0, 0]], dtype=np.uint8)
 
+intersection = common(image1, image2)
+border1 = innerEdge(image1)
+border2 = innerEdge(image2)
+edge1 = common(intersection, border2)
+edge2 = common(intersection, border1)
+tips = cv2.bitwise_and(edge2, edge1)
+cv2.imshow("test", tips)
+cv2.waitKey(0)
+'''
 cv2.imshow("test", cut)
 cv2.waitKey(0)
 
@@ -88,3 +97,4 @@ cv2.waitKey(0)
 
 cv2.imshow("test", total)
 cv2.waitKey(0)
+'''

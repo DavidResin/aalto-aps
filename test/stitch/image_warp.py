@@ -1,4 +1,4 @@
-import cv2
+import cv2, watershed
 import numpy as np
 
 # Convert a vector of non-homogeneous 2D points to a vector of homogenehous 2D points.
@@ -27,17 +27,24 @@ def bounding_box(points):
 # Returns the image src warped through the homography H and the translation values to add to the image. The resulting dst image contains the entire warped image.
 def homography_warp(images):
 	for image_data in images:
-		src = image_data.image_resized
+		src = image_data.lens_image
+		mask = image_data.lens_mask
 		matrix = image_data.matrix
 		h, w = src.shape[:2]
+		lens_offset_x, lens_offset_y = image_data.params.lens_offset
 		corners = np.array([[0, 0], [w, 0], [0, h], [w, h]])
-		projected = transform_via_homography(corners, matrix)
-		bb = bounding_box(projected)
+		center = np.array([[w / 2, h / 2]]) 
+		projected_corners = transform_via_homography(corners, matrix)
+		projected_center = transform_via_homography(center, matrix)
+		bb = bounding_box(projected_corners)
 		put_in_corner = np.array([[1, 0, -bb[0]], [0, 1, -bb[1]], [0, 0, 1]])
 		dimensions = (bb[2] - bb[0], bb[3] - bb[1])
+		new_matrix = np.float32(np.dot(put_in_corner, matrix))
 
-		image_data.image_transformed = cv2.warpPerspective(src, np.float32(np.dot(put_in_corner, matrix)), dimensions)
+		image_data.image_transformed = cv2.warpPerspective(src, new_matrix, dimensions, flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT)
+		image_data.mask_transformed = cv2.warpPerspective(mask, new_matrix, dimensions, flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT)
 		image_data.offset = (bb[0], bb[1])
+		image_data.center = (projected_center[0][0] + bb[0], projected_center[1][0] + bb[1])
 
 def position_images(images):
 	offset_x, offset_y, total_h, total_w = 0, 0, 0, 0
@@ -73,22 +80,38 @@ def apply_translation(images):
 		tX, tY = image_data.offset
 		h, w = image_data.image_transformed.shape[:2]
 		img = np.zeros(image_data.new_size + (3,), np.uint8)
+		mask = np.zeros(image_data.new_size, np.uint8)
 		img[tY:tY + h, tX:tX + w] = image_data.image_transformed
+		mask[tY:tY + h, tX:tX + w] = image_data.mask_transformed
 		image_data.image_transformed = img
-		cv2.imwrite("test" +str(image_data.index)+".jpg", img)
+		image_data.mask_transformed = mask
+
+		cX, cY = image_data.center
+		image_data.center = (cX + tX, cY + tY)
+
+		cv2.imwrite("test" +str(image_data.index)+".jpg", image_data.image_transformed)
+		cv2.imwrite("mask" +str(image_data.index)+".jpg", image_data.mask_transformed)
 
 def copy_over(images):
-	img = images[0].image_transformed
+	image1 = images[0].image_transformed
+	mask1 = images[0].mask_transformed
 
 	for image_data in images[1:]:
-		src = image_data.image_transformed
+		image2 = image_data.image_transformed
+		mask2 = image_data.mask_transformed
 
-		src_grey = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
-		_, mask = cv2.threshold(src_grey, 1, 255, cv2.THRESH_BINARY)
+		own_mask1 = cv2.bitwise_and(mask1, cv2.bitwise_not(mask2))
+		own_mask2 = cv2.bitwise_and(mask2, cv2.bitwise_not(mask1))
 
-		src = cv2.bitwise_and(src, src, mask=mask)
-		img = cv2.bitwise_and(img, img, mask=cv2.bitwise_not(mask))
+		zone1, zone2 = watershed.cut(image1, image2, mask1, mask2)
 
-		img = cv2.add(src, img)
+		final_mask1 = cv2.bitwise_or(own_mask1, zone1)
+		final_mask2 = cv2.bitwise_or(own_mask2, zone2)
 
-	return img
+		cut1 = cv2.bitwise_and(image1, image1, mask=final_mask1)
+		cut2 = cv2.bitwise_and(image2, image2, mask=final_mask2)
+
+		image1 = cv2.add(cut1, cut2)
+		mask1 = cv2.bitwise_or(final_mask1, final_mask2)
+
+	return image1
