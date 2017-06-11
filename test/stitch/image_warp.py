@@ -1,4 +1,5 @@
 import cv2, watershed
+import exposure as ex
 import numpy as np
 
 # Convert a vector of non-homogeneous 2D points to a vector of homogenehous 2D points.
@@ -97,8 +98,8 @@ def copy_over(images):
 	mask1 = images[0].mask_transformed
 
 	for image_data in images[1:]:
-		image2 = image_data.image_transformed
 		mask2 = image_data.mask_transformed
+		image2 = image_data.image_transformed
 
 		own_mask1 = cv2.bitwise_and(mask1, cv2.bitwise_not(mask2))
 		own_mask2 = cv2.bitwise_and(mask2, cv2.bitwise_not(mask1))
@@ -108,10 +109,47 @@ def copy_over(images):
 		final_mask1 = cv2.bitwise_or(own_mask1, zone1)
 		final_mask2 = cv2.bitwise_or(own_mask2, zone2)
 
-		cut1 = cv2.bitwise_and(image1, image1, mask=final_mask1)
-		cut2 = cv2.bitwise_and(image2, image2, mask=final_mask2)
+		tempMask1 = np.copy(final_mask1)
+		tempMask2 = np.copy(final_mask2)
 
-		image1 = cv2.add(cut1, cut2)
-		mask1 = cv2.bitwise_or(final_mask1, final_mask2)
+		fill1 = np.copy(final_mask1)
+		fill2 = np.copy(final_mask2)
+
+		for i in range(1, 16):
+			line1 = watershed.outerEdge(fill1)
+			line2 = watershed.outerEdge(fill2)
+			fill1 = cv2.bitwise_or(fill1, line1)
+			fill2 = cv2.bitwise_or(fill2, line2)
+			line1[line1 == 255] -= i * 16
+			line2[line2 == 255] -= i * 16
+			tempMask1 = cv2.bitwise_or(tempMask1, line1)
+			tempMask2 = cv2.bitwise_or(tempMask2, line2)
+
+		tempMask1 = cv2.filter2D(tempMask1, -1, np.array([[0.5]]))
+		tempMask2 = cv2.filter2D(tempMask2, -1, np.array([[0.5]]))
+		tempMask1 = cv2.bitwise_and(final_mask2, tempMask1)
+		tempMask2 = cv2.bitwise_and(final_mask1, tempMask2)
+		final_mask1 = cv2.add(tempMask1, final_mask1)
+		final_mask2 = cv2.add(tempMask2, final_mask2)
+		final_mask1 = cv2.subtract(final_mask1, tempMask2)
+		final_mask2 = cv2.subtract(final_mask2, tempMask1)
+		cv2.imshow("temp", final_mask1)
+		cv2.waitKey(0)
+		cv2.imshow("temp", final_mask2)
+		cv2.waitKey(0)
+
+		print(final_mask1.dtype)
+
+		final_image1 = cv2.bitwise_and(image1, image1, mask=final_mask1)
+		final_image2 = cv2.bitwise_and(image2, image2, mask=final_mask2)
+		cv2.imshow("temp", final_image1)
+		cv2.waitKey(0)
+		cv2.imshow("temp", final_image2)
+		cv2.waitKey(0)
+
+
+		
+		image1 = cv2.bitwise_or(final_image1, final_image2)
+		mask1 = cv2.add(final_mask1, final_mask2)
 
 	return image1

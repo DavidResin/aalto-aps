@@ -25,15 +25,15 @@ def distance(p1, p2):
 
 	return (x1 - x2)**2 + (y1 - y2)**2
 
-def watershed(image, mask, center1, center2):
+def watershed(image, mask, edges, center1, center2):
 	kernel = np.ones((3, 3), np.uint8)
 	imageColor = cv2.cvtColor(image,cv2.COLOR_GRAY2BGR)
 
 	ret, thresh = cv2.threshold(image, 1, 255, cv2.THRESH_BINARY)
-	opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
+	opening = cv2.bitwise_or(cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2), edges)
 	sure_bg = cv2.dilate(opening, kernel, iterations=3)
 	dist_transform = cv2.distanceTransform(opening, cv2.DIST_L2, 5)
-	ret, sure_fg = cv2.threshold(dist_transform, 0.0001 * dist_transform.max(), 255, 0)
+	ret, sure_fg = cv2.threshold(dist_transform, 20, 255, 0)
 	sure_fg = np.uint8(sure_fg)
 	unknown = cv2.subtract(sure_bg, sure_fg)
 
@@ -42,6 +42,13 @@ def watershed(image, mask, center1, center2):
 	markers[unknown == 255] = 0
 	markers = cv2.watershed(imageColor, markers)
 	markers[mask == 0] = -1
+
+	plt.imshow(markers)
+	plt.savefig("ta.png")
+	plt.imshow(sure_fg)
+	plt.savefig("tb.png")
+	plt.imshow(dist_transform)
+	plt.savefig("tc.png")
 
 	cut_mask = np.zeros(mask.shape, dtype=np.uint8)
 	cut_mask[markers == 0] = 255
@@ -85,8 +92,9 @@ def cut(image1, image2, mask1, mask2):
 	mask = cv2.bitwise_and(mask1, mask2)
 	diff = cv2.absdiff(gray1, gray2)
 	diff = cv2.bitwise_and(mask, diff)
+	edges = cv2.bitwise_xor(mask1, mask2)
 
-	c1, c2 = watershed(diff, mask, center1, center2)
+	c1, c2 = watershed(diff, mask, edges, center1, center2)
 	'''
 	a = imutils.resize(c1, width=1000)
 	cv2.imshow("test", a)
