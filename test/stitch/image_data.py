@@ -3,36 +3,27 @@ import numpy as np
 import distortion as dist
 
 class Image_Params:
-	def __init__(self):
+	def __init__(self, image_size):
 		self.lens_offset = (0, 0)
 		self.lens_strength = 0
-		self.zoom_strength = 1
 		self.theta_inv = 0
 		self.correction_radius = 0
-		self.image_size = None
+		self.image_size = image_size
 
 		self.newW = 0
 		self.newH = 0
 
-		self.lens_zoomX = 1
-		self.lens_zoomY = 1
-
-	def update(self, image_size, lens_value=0, zoom_value=1):
-		h, w = image_size
+	def update(self, lens_value):
+		h, w = self.image_size
 		padX, padY, theta_inv, cR = dist.paddings(w, h, lens_value)
-
-		self.image_size = image_size
+		
 		self.lens_offset = (padX, padY)
 		self.lens_strength = lens_value
-		self.zoom_strength = zoom_value
 		self.theta_inv = theta_inv
 		self.correction_radius = cR
 
 		self.newW = w + 2 * padX
 		self.newH = h + 2 * padY
-
-		self.lens_zoomX = image_size[1] / self.newW
-		self.lens_zoomY = image_size[0] / self.newH
 
 class Image_Data():
 	def __init__(self, index, filename, ratio=1):
@@ -51,6 +42,7 @@ class Image_Data():
 		self.channels = self.image_resized.shape[2]
 		self.mask_resized = np.zeros(self.image_size, dtype=np.uint8).fill(255)
 		self.descriptor = stitcher.detectAndDescribe(self.image_resized)
+		self.lens_descriptor = None
 		self.correspondances = [[] for i in range(len(self.descriptor[0]))]
 		self.lens_image = None
 		self.lens_mask = None
@@ -61,8 +53,8 @@ class Image_Data():
 		self.new_size = None
 		self.center = None
 		
-		self.params = Image_Params()
-		self.temp_params = Image_Params()
+		self.params = Image_Params(self.image_size)
+		self.temp_params = Image_Params(self.image_size)
 
 	def apply_changes(self):
 		self.params = copy.deepcopy(self.temp_params)
@@ -101,8 +93,8 @@ class Image_Data():
 	def reset_temp_changes(self):
 		self.temp_params = copy.deepcopy(self.params)
 
-	def update_params(self, lens_value=0, zoom_value=1):
-		self.temp_params.update(self.image_size, lens_value, zoom_value)
+	def update_params(self, lens_strength):
+		self.temp_params.update(lens_strength)
 
 	def cross(self, other, ratio=0.75, reprojThresh=4.0):
 		kp1, feat1 = self.descriptor

@@ -2,10 +2,10 @@ from least_squares import LSQ
 import scipy.optimize as opt
 
 class Adjuster:
-	def __init__(self, images, matches):
+	def __init__(self, images, matches, edge_array, ransac_array):
 		self.images = images
 		self.matches = matches
-		self.lsq = LSQ(images, matches)
+		self.lsq = LSQ(images, matches, edge_array, ransac_array)
 
 		self.init_zoom_value = 1
 		self.init_lens_value = 0
@@ -15,20 +15,16 @@ class Adjuster:
 
 	def global_adjust(self):
 		# since it is bounded, we can use : 'L-BFGS-B', 'TNC' and 'SLSQP'
-		result = opt.minimize(self.bulk, (self.init_lens_value, self.init_zoom_value), method='TNC', bounds=((0, 6), (0, None)))
+		result = opt.minimize_scalar(self.bulk, bounds=(0, 6))
 		print(result.x, result.success, result.nit)
 
-		self.lens_value, self.zoom_value = result.x
-		self.bulk((0, 1))
-		self.apply()
+		#self.apply()
 
-	def bulk(self, data):
-		#print("bulk", data)
-		lens_value, zoom_value = data
+	def bulk(self, lens_strength):
 		for i in self.images:
-			i.update_params(lens_value, zoom_value)
+			i.update_params(lens_strength)
 
-		return self.lsq.total()
+		return self.lsq.total(lens_strength)
 
 	def apply(self):
 		for i in self.images:

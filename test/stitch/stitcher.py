@@ -39,7 +39,7 @@ def detectAndDescribe(image):
 
 	return (kps, features)
 
-def matchKeypoints(kp1, kp2, feat1, feat2, ratio, reprojThresh):
+def matchKeypoints(kp1, kp2, feat1, feat2, ratio=0.75, reprojThresh=4.0):
 	matcher = cv2.DescriptorMatcher_create("BruteForce")
 	rawMatches = matcher.knnMatch(feat1, feat2, 2)
 	matches = []
@@ -49,14 +49,17 @@ def matchKeypoints(kp1, kp2, feat1, feat2, ratio, reprojThresh):
 			matches.append((m[0].trainIdx, m[0].queryIdx))
 
 	if len(matches) > 4:
-		pts1 = np.float32([kp1[i] for (_, i) in matches])
-		pts2 = np.float32([kp2[i] for (i, _) in matches])
-
-		(matrix, status) = cv2.findHomography(pts1, pts2, cv2.RANSAC, reprojThresh)
+		(matrix, status) = getHomography(kp1, kp2, matches, reprojThresh)
 
 		return (matches, matrix, status)
 
 	return None
+
+def getHomography(kp1, kp2, matches, reprojThresh=4.0):
+	pts1 = np.float32([kp1[i] for (_, i) in matches])
+	pts2 = np.float32([kp2[i] for (i, _) in matches])
+
+	return cv2.findHomography(pts1, pts2, cv2.RANSAC, reprojThresh)
 
 def drawMatches(img1, img2, kp1, kp2, matches, status):
 	(h1, w1) = img1.shape[:2]

@@ -29,26 +29,31 @@ def watershed(image, mask, edges, center1, center2):
 	kernel = np.ones((3, 3), np.uint8)
 	imageColor = cv2.cvtColor(image,cv2.COLOR_GRAY2BGR)
 
+
 	ret, thresh = cv2.threshold(image, 1, 255, cv2.THRESH_BINARY)
-	opening = cv2.bitwise_or(cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2), edges)
+	opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
 	sure_bg = cv2.dilate(opening, kernel, iterations=3)
 	dist_transform = cv2.distanceTransform(opening, cv2.DIST_L2, 5)
-	ret, sure_fg = cv2.threshold(dist_transform, 20, 255, 0)
+	ret, sure_fg = cv2.threshold(dist_transform, 0.3 * dist_transform.max(), 255, 0)
+	sure_fg = cv2.erode(sure_fg, kernel, iterations=1)
 	sure_fg = np.uint8(sure_fg)
 	unknown = cv2.subtract(sure_bg, sure_fg)
 
 	ret, markers = cv2.connectedComponents(sure_fg)
 	markers = markers + 1
 	markers[unknown == 255] = 0
+	temp = np.copy(markers)
 	markers = cv2.watershed(imageColor, markers)
 	markers[mask == 0] = -1
 
-	plt.imshow(markers)
-	plt.savefig("ta.png")
-	plt.imshow(sure_fg)
-	plt.savefig("tb.png")
-	plt.imshow(dist_transform)
-	plt.savefig("tc.png")
+	plt.subplot(2, 3, 1), plt.imshow(image)
+	plt.subplot(2, 3, 2), plt.imshow(opening)
+	plt.subplot(2, 3, 3), plt.imshow(dist_transform)
+	plt.subplot(2, 3, 4), plt.imshow(sure_fg)
+	plt.subplot(2, 3, 5), plt.imshow(temp)
+	plt.subplot(2, 3, 6), plt.imshow(markers)
+	plt.tight_layout()
+	plt.show()
 
 	cut_mask = np.zeros(mask.shape, dtype=np.uint8)
 	cut_mask[markers == 0] = 255
@@ -84,8 +89,9 @@ def center(mask1, mask2):
 	return center1, center2
 
 def cut(image1, image2, mask1, mask2):
-	gray1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
-	gray2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
+	kernel = np.ones((5, 5), np.float32) / 25
+	gray1 = cv2.filter2D(cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY), -1, kernel)
+	gray2 = cv2.filter2D(cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY), -1, kernel)
 
 	center1, center2 = center(mask1, mask2)
 

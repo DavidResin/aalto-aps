@@ -106,14 +106,33 @@ def copy_over(images):
 
 		zone1, zone2 = watershed.cut(image1, image2, mask1, mask2)
 
-		final_mask1 = cv2.bitwise_or(own_mask1, zone1)
-		final_mask2 = cv2.bitwise_or(own_mask2, zone2)
+		sharp_mask1 = cv2.bitwise_or(own_mask1, zone1)
+		sharp_mask2 = cv2.bitwise_or(own_mask2, zone2)
 
-		tempMask1 = np.copy(final_mask1)
-		tempMask2 = np.copy(final_mask2)
+		mask = cv2.bitwise_or(mask1, mask2)
 
-		fill1 = np.copy(final_mask1)
-		fill2 = np.copy(final_mask2)
+		temp1 = np.copy(mask1)
+		innerFade1 = np.copy(mask1)
+		temp2 = np.copy(mask2)
+		innerFade2 = np.copy(mask2)
+
+
+		for i in range(1, 32):
+			line1 = watershed.innerEdge(temp1)
+			line2 = watershed.innerEdge(temp2)
+			temp1 -= line1
+			temp2 -= line2
+			line1[line1 == 255] -= i * 8
+			line2[line2 == 255] -= i * 8
+			innerFade1 -= line1
+			innerFade2 -= line2
+
+		tempMask1 = np.copy(sharp_mask1)
+		tempMask2 = np.copy(sharp_mask2)
+		fill1 = np.copy(sharp_mask1)
+		fill2 = np.copy(sharp_mask2)
+		temp1 = np.copy(fill1)
+		temp2 = np.copy(fill2)
 
 		for i in range(1, 16):
 			line1 = watershed.outerEdge(fill1)
@@ -125,31 +144,42 @@ def copy_over(images):
 			tempMask1 = cv2.bitwise_or(tempMask1, line1)
 			tempMask2 = cv2.bitwise_or(tempMask2, line2)
 
+
+		innerFade1 = innerFade1.astype(float) / 255
+		innerFade2 = innerFade2.astype(float) / 255
+
+
 		tempMask1 = cv2.filter2D(tempMask1, -1, np.array([[0.5]]))
 		tempMask2 = cv2.filter2D(tempMask2, -1, np.array([[0.5]]))
-		tempMask1 = cv2.bitwise_and(final_mask2, tempMask1)
-		tempMask2 = cv2.bitwise_and(final_mask1, tempMask2)
-		final_mask1 = cv2.add(tempMask1, final_mask1)
-		final_mask2 = cv2.add(tempMask2, final_mask2)
-		final_mask1 = cv2.subtract(final_mask1, tempMask2)
-		final_mask2 = cv2.subtract(final_mask2, tempMask1)
-		cv2.imshow("temp", final_mask1)
-		cv2.waitKey(0)
-		cv2.imshow("temp", final_mask2)
-		cv2.waitKey(0)
 
-		print(final_mask1.dtype)
+		tempMask1 = cv2.bitwise_and(sharp_mask2, tempMask1)
+		tempMask2 = cv2.bitwise_and(sharp_mask1, tempMask2)
+		tempMask1 = cv2.multiply(innerFade1, tempMask1.astype(float)).astype(np.uint8)
+		tempMask2 = cv2.multiply(innerFade2, tempMask2.astype(float)).astype(np.uint8)
 
-		final_image1 = cv2.bitwise_and(image1, image1, mask=final_mask1)
-		final_image2 = cv2.bitwise_and(image2, image2, mask=final_mask2)
-		cv2.imshow("temp", final_image1)
-		cv2.waitKey(0)
-		cv2.imshow("temp", final_image2)
-		cv2.waitKey(0)
+		sharp_mask1 = cv2.add(tempMask1, sharp_mask1)
+		sharp_mask2 = cv2.add(tempMask2, sharp_mask2)
+		sharp_mask1 = cv2.subtract(sharp_mask1, tempMask2)
+		sharp_mask2 = cv2.subtract(sharp_mask2, tempMask1)
 
+		crossMask1 = cv2.bitwise_and(fill1, cv2.bitwise_not(temp1))
+		crossMask2 = cv2.bitwise_and(fill2, cv2.bitwise_not(temp2))
+		crossMask = cv2.bitwise_or(crossMask1, crossMask2)
+		crossMask = cv2.bitwise_and(crossMask, mask)
 
+		alpha1 = sharp_mask1.astype(float) / 255
+		alpha2 = sharp_mask2.astype(float) / 255
+
+		alpha1 = cv2.merge((alpha1, alpha1, alpha1))
+		alpha2 = cv2.merge((alpha2, alpha2, alpha2))
+
+		final_image1 = cv2.bitwise_and(image1, image1, mask=sharp_mask1).astype(float)
+		final_image2 = cv2.bitwise_and(image2, image2, mask=sharp_mask2).astype(float)
+
+		final_image1 = cv2.multiply(alpha1, final_image1).astype(np.uint8)
+		final_image2 = cv2.multiply(alpha2, final_image2).astype(np.uint8)
 		
-		image1 = cv2.bitwise_or(final_image1, final_image2)
-		mask1 = cv2.add(final_mask1, final_mask2)
+		image1 = cv2.add(final_image1, final_image2)
+		mask1 = cv2.add(sharp_mask1, sharp_mask2)
 
 	return image1

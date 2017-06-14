@@ -75,10 +75,10 @@ for i in range(image_count):
 
 # We find the best edges and build a tree using the results
 edge_array = linker.solve(ransacArray, 2)
+adjuster = Adjuster(images, matchArray, edge_array, ransacArray)
+adjuster.global_adjust()
 tree = linker.edgesToTree(firstelem=mainImage, array=images, edge_table=edge_array, data_table=ransacArray)
 
-adjuster = Adjuster(images, matchArray)
-adjuster.global_adjust()
 
 iw.homography_warp(images)
 iw.position_images(images)
