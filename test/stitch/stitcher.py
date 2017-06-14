@@ -61,6 +61,12 @@ def getHomography(kp1, kp2, matches, reprojThresh=4.0):
 
 	return cv2.findHomography(pts1, pts2, cv2.RANSAC, reprojThresh)
 
+def getAffine(kp1, kp2, matches):
+	pts1 = np.float32([kp1[i] for (_, i) in matches])
+	pts2 = np.float32([kp2[i] for (i, _) in matches])
+
+	return np.vstack((cv2.estimateRigidTransform(pts1, pts2, fullAffine=True), np.array([[0, 0, 1]])))
+
 def drawMatches(img1, img2, kp1, kp2, matches, status):
 	(h1, w1) = img1.shape[:2]
 	(h2, w2) = img2.shape[:2]

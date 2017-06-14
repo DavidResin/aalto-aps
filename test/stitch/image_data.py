@@ -13,10 +13,13 @@ class Image_Params:
 		self.newW = 0
 		self.newH = 0
 
+		self.zoomX = 1
+		self.zoomY = 1
+
 	def update(self, lens_value):
 		h, w = self.image_size
 		padX, padY, theta_inv, cR = dist.paddings(w, h, lens_value)
-		
+
 		self.lens_offset = (padX, padY)
 		self.lens_strength = lens_value
 		self.theta_inv = theta_inv
@@ -24,6 +27,9 @@ class Image_Params:
 
 		self.newW = w + 2 * padX
 		self.newH = h + 2 * padY
+
+		self.zoomX = w / self.newW
+		self.zoomY = h / self.newH
 
 class Image_Data():
 	def __init__(self, index, filename, ratio=1):
@@ -51,7 +57,6 @@ class Image_Data():
 		self.mask_transformed = None
 		self.offset = None
 		self.new_size = None
-		self.center = None
 		
 		self.params = Image_Params(self.image_size)
 		self.temp_params = Image_Params(self.image_size)
@@ -78,17 +83,37 @@ class Image_Data():
 		for x in range(params.newW):
 			for y in range(params.newH):
 				newX, newY = dist.lensCorrectParams(x, y, params)
-				tempX = padX + newX
-				tempY = padY + newY
+				tempX = newX
+				tempY = newY
 				
 				for i in range(log):
 					for j in range(log):
 						if tempX + i < params.newW and tempY + j < params.newH:
 							newImage[tempY + j][tempX + i] = image[y][x]
 							newMask[tempY + j][tempX + i] = 255
-	
-		self.lens_image = imutils.resize(newImage, width=int(params.newW * params.zoom_strength))
-		self.lens_mask = imutils.resize(newMask, width=int(params.newW * params.zoom_strength))
+		'''
+		h_orig, w_orig = self.image_size
+
+		for x in range(w_orig):
+			newImage[padY][padX + x] = [255, 255, 255]
+			newImage[padY + h_orig-1][padX + x] = [255, 255, 255]
+
+		for y in range(h_orig):
+			newImage[padY + y][padX] = [255, 255, 255]
+			newImage[padY + y][padX + w_orig-1] = [255, 255, 255]
+
+		for x in range(params.newW):
+			newImage[0][x] = [255, 255, 255]
+			newImage[params.newH-1][x] = [255, 255, 255]
+
+		for y in range(params.newH):
+			newImage[y][0] = [255, 255, 255]
+			newImage[y][params.newW-1] = [255, 255, 255]
+		'''
+
+		self.lens_image = newImage
+		self.lens_mask = newMask
+		cv2.imwrite("lens" + str(self.index) + ".jpg", newImage)
 
 	def reset_temp_changes(self):
 		self.temp_params = copy.deepcopy(self.params)

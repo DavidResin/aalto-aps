@@ -32,11 +32,9 @@ def homography_warp(images):
 		mask = image_data.lens_mask
 		matrix = image_data.matrix
 		h, w = src.shape[:2]
-		lens_offset_x, lens_offset_y = image_data.params.lens_offset
 		corners = np.array([[0, 0], [w, 0], [0, h], [w, h]])
 		center = np.array([[w / 2, h / 2]]) 
 		projected_corners = transform_via_homography(corners, matrix)
-		projected_center = transform_via_homography(center, matrix)
 		bb = bounding_box(projected_corners)
 		put_in_corner = np.array([[1, 0, -bb[0]], [0, 1, -bb[1]], [0, 0, 1]])
 		dimensions = (bb[2] - bb[0], bb[3] - bb[1])
@@ -45,8 +43,7 @@ def homography_warp(images):
 		image_data.image_transformed = cv2.warpPerspective(src, new_matrix, dimensions, flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT)
 		image_data.mask_transformed = cv2.warpPerspective(mask, new_matrix, dimensions, flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT)
 		image_data.offset = (bb[0], bb[1])
-		image_data.center = (projected_center[0][0] + bb[0], projected_center[1][0] + bb[1])
-
+		
 def position_images(images):
 	offset_x, offset_y, total_h, total_w = 0, 0, 0, 0
 
@@ -80,15 +77,12 @@ def apply_translation(images):
 	for image_data in images:
 		tX, tY = image_data.offset
 		h, w = image_data.image_transformed.shape[:2]
-		img = np.zeros(image_data.new_size + (3,), np.uint8)
+		img = np.zeros(image_data.new_size + (image_data.channels,), np.uint8)
 		mask = np.zeros(image_data.new_size, np.uint8)
 		img[tY:tY + h, tX:tX + w] = image_data.image_transformed
 		mask[tY:tY + h, tX:tX + w] = image_data.mask_transformed
 		image_data.image_transformed = img
 		image_data.mask_transformed = mask
-
-		cX, cY = image_data.center
-		image_data.center = (cX + tX, cY + tY)
 
 		cv2.imwrite("test" +str(image_data.index)+".jpg", image_data.image_transformed)
 		cv2.imwrite("mask" +str(image_data.index)+".jpg", image_data.mask_transformed)

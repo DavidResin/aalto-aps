@@ -77,8 +77,9 @@ for i in range(image_count):
 edge_array = linker.solve(ransacArray, 2)
 adjuster = Adjuster(images, matchArray, edge_array, ransacArray)
 adjuster.global_adjust()
+#adjuster.individual_adjust()
+adjuster.set_transforms()
 tree = linker.edgesToTree(firstelem=mainImage, array=images, edge_table=edge_array, data_table=ransacArray)
-
 
 iw.homography_warp(images)
 iw.position_images(images)

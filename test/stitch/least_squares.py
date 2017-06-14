@@ -9,29 +9,47 @@ class LSQ:
 		self.edge_array = edge_array
 		self.ransac_array = ransac_array
 
-	def total(self, strength):
+	def update_descriptor(self, image, strength):
+		image.update_params(strength)
+		new_descriptor = copy.deepcopy(image.descriptor)
+		keypoints = []
+		k, f = new_descriptor
+
+		for x, y in k:
+			keypoints.append(dist.lensCorrectParams(x, y, image.temp_params))
+
+		image.lens_descriptor = keypoints, f
+
+	def get_row_values(self, i):
+		total = 0
+
+		for j in range(len(self.edge_array)):
+			if self.edge_array[i, j]:
+				matches, matrix, status = self.ransac_array[j, i]
+				newMatrix, newStatus = stitcher.getHomography(self.images[i].lens_descriptor[0], self.images[j].lens_descriptor[0], matches)
+				self.ransac_array[j, i] = matches, newMatrix, newStatus
+				total += newMatrix[2][0]**2 + newMatrix[2][1]**2 + newMatrix[0][1]**2 + newMatrix[1][0]**2
+
+		return total
+
+	def global_total(self, strength):
 		for image in self.images:
-			image.temp_params.lens_strength
-			new_descriptor = copy.deepcopy(image.descriptor)
-
-			keypoints = []
-			k, f = new_descriptor
-
-			for x, y in k:
-				keypoints.append(dist.lensCorrectParams(x, y, image.temp_params))
-
-			image.lens_descriptor = keypoints, f
+			self.update_descriptor(image, strength)
 
 		total = 0
 
 		for i in range(len(self.edge_array)):
-			for j in range(len(self.edge_array)):
-				if self.edge_array[i, j]:
-					matrix, _ = stitcher.getHomography(self.images[i].lens_descriptor[0], self.images[j].lens_descriptor[0], self.ransac_array[j, i][0])
-					total += matrix[2][0]**2 + matrix[2][1]**2
+			total += self.get_row_values(i)
 
 		return total
 
+	def single_total(self, strength, image):
+		self.update_descriptor(image, strength)
+
+		return self.get_row_values(image.index)
+
+	#DEPRECATED STUFF
+		
 	def values(self):
 		return [self.distance(i) for i in range(len(self.matches))]
 

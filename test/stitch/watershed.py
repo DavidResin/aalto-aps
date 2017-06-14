@@ -45,7 +45,7 @@ def watershed(image, mask, edges, center1, center2):
 	temp = np.copy(markers)
 	markers = cv2.watershed(imageColor, markers)
 	markers[mask == 0] = -1
-
+	'''
 	plt.subplot(2, 3, 1), plt.imshow(image)
 	plt.subplot(2, 3, 2), plt.imshow(opening)
 	plt.subplot(2, 3, 3), plt.imshow(dist_transform)
@@ -54,7 +54,7 @@ def watershed(image, mask, edges, center1, center2):
 	plt.subplot(2, 3, 6), plt.imshow(markers)
 	plt.tight_layout()
 	plt.show()
-
+	'''
 	cut_mask = np.zeros(mask.shape, dtype=np.uint8)
 	cut_mask[markers == 0] = 255
 
