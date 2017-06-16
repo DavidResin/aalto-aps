@@ -2,6 +2,7 @@ import copy, cv2, imutils, math, stitcher
 import numpy as np
 import distortion as dist
 
+# Wrapper for image parameters
 class Image_Params:
 	def __init__(self, image_size):
 		self.lens_offset = (0, 0)
@@ -16,6 +17,7 @@ class Image_Params:
 		self.zoomX = 1
 		self.zoomY = 1
 
+	# Updates the parameters with a new lens strength
 	def update(self, lens_value):
 		h, w = self.image_size
 		padX, padY, theta_inv, cR = dist.paddings(w, h, lens_value)
@@ -31,6 +33,7 @@ class Image_Params:
 		self.zoomX = w / self.newW
 		self.zoomY = h / self.newH
 
+# Wrapper for image data
 class Image_Data():
 	def __init__(self, index, filename, ratio=1):
 		self.index = index
@@ -61,10 +64,12 @@ class Image_Data():
 		self.params = Image_Params(self.image_size)
 		self.temp_params = Image_Params(self.image_size)
 
+	# Applies the parameters
 	def apply_changes(self):
 		self.params = copy.deepcopy(self.temp_params)
 
-	def distort(self):
+	# Generates the distorted image
+	def distort(self, details):
 		params = self.params
 		padX, padY = params.lens_offset
 
@@ -91,47 +96,18 @@ class Image_Data():
 						if tempX + i < params.newW and tempY + j < params.newH:
 							newImage[tempY + j][tempX + i] = image[y][x]
 							newMask[tempY + j][tempX + i] = 255
-		'''
-		h_orig, w_orig = self.image_size
-
-		for x in range(w_orig):
-			newImage[padY][padX + x] = [255, 255, 255]
-			newImage[padY + h_orig-1][padX + x] = [255, 255, 255]
-
-		for y in range(h_orig):
-			newImage[padY + y][padX] = [255, 255, 255]
-			newImage[padY + y][padX + w_orig-1] = [255, 255, 255]
-
-		for x in range(params.newW):
-			newImage[0][x] = [255, 255, 255]
-			newImage[params.newH-1][x] = [255, 255, 255]
-
-		for y in range(params.newH):
-			newImage[y][0] = [255, 255, 255]
-			newImage[y][params.newW-1] = [255, 255, 255]
-		'''
 
 		self.lens_image = newImage
 		self.lens_mask = newMask
-		cv2.imwrite("lens" + str(self.index) + ".jpg", newImage)
 
+		if details:
+			cv2.imwrite("lens_image" + str(self.index) + ".jpg", newImage)
+			cv2.imwrite("lens_mask" + str(self.index) + ".jpg", newMask)
+
+	# Resets the temporary parameters to the current ones
 	def reset_temp_changes(self):
 		self.temp_params = copy.deepcopy(self.params)
 
+	# Updates the temporary parameters with the given lens strength
 	def update_params(self, lens_strength):
 		self.temp_params.update(lens_strength)
-
-	def cross(self, other, ratio=0.75, reprojThresh=4.0):
-		kp1, feat1 = self.descriptor
-		kp2, feat2 = other.descriptor
-
-		crossdata = stitcher.matchKeypoints(kp1, kp2, feat1, feat2, ratio, reprojThresh)
-
-		if crossdata is not None and crossdata[2] is not None:
-			(matches, matrix, status) = crossdata
-
-			for ((m1, m2), s) in zip(matches, status):
-				if s == 1:
-					self.correspondances[m2].append((other.index, m1))
-
-		return crossdata

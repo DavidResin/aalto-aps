@@ -43,7 +43,8 @@ def homography_warp(images):
 		image_data.image_transformed = cv2.warpPerspective(src, new_matrix, dimensions, flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT)
 		image_data.mask_transformed = cv2.warpPerspective(mask, new_matrix, dimensions, flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT)
 		image_data.offset = (bb[0], bb[1])
-		
+
+# Adapts the image positions and result image size according to the cumulated sizes and positions of all images
 def position_images(images):
 	offset_x, offset_y, total_h, total_w = 0, 0, 0, 0
 
@@ -73,7 +74,8 @@ def position_images(images):
 		x, y = image_data.offset
 		image_data.offset = (x + offset_x, y + offset_y)
 
-def apply_translation(images):
+# Applies translations to all images
+def apply_translation(images, details):
 	for image_data in images:
 		tX, tY = image_data.offset
 		h, w = image_data.image_transformed.shape[:2]
@@ -84,10 +86,12 @@ def apply_translation(images):
 		image_data.image_transformed = img
 		image_data.mask_transformed = mask
 
-		cv2.imwrite("test" +str(image_data.index)+".jpg", image_data.image_transformed)
-		cv2.imwrite("mask" +str(image_data.index)+".jpg", image_data.mask_transformed)
+		if details:
+			cv2.imwrite("warped_image" + str(image_data.index) + ".jpg", image_data.image_transformed)
+			cv2.imwrite("warped_mask" + str(image_data.index) + ".jpg", image_data.mask_transformed)
 
-def copy_over(images):
+# Cumulates all images to get the final panorama
+def copy_over(images, details):
 	image1 = images[0].image_transformed
 	mask1 = images[0].mask_transformed
 
@@ -98,7 +102,7 @@ def copy_over(images):
 		own_mask1 = cv2.bitwise_and(mask1, cv2.bitwise_not(mask2))
 		own_mask2 = cv2.bitwise_and(mask2, cv2.bitwise_not(mask1))
 
-		zone1, zone2 = watershed.cut(image1, image2, mask1, mask2)
+		zone1, zone2 = watershed.cut(image1, image2, mask1, mask2, details, image_data.index)
 
 		sharp_mask1 = cv2.bitwise_or(own_mask1, zone1)
 		sharp_mask2 = cv2.bitwise_or(own_mask2, zone2)
@@ -109,7 +113,6 @@ def copy_over(images):
 		innerFade1 = np.copy(mask1)
 		temp2 = np.copy(mask2)
 		innerFade2 = np.copy(mask2)
-
 
 		for i in range(1, 32):
 			line1 = watershed.innerEdge(temp1)
@@ -138,10 +141,8 @@ def copy_over(images):
 			tempMask1 = cv2.bitwise_or(tempMask1, line1)
 			tempMask2 = cv2.bitwise_or(tempMask2, line2)
 
-
 		innerFade1 = innerFade1.astype(float) / 255
 		innerFade2 = innerFade2.astype(float) / 255
-
 
 		tempMask1 = cv2.filter2D(tempMask1, -1, np.array([[0.5]]))
 		tempMask2 = cv2.filter2D(tempMask2, -1, np.array([[0.5]]))
@@ -166,6 +167,10 @@ def copy_over(images):
 
 		alpha1 = cv2.merge((alpha1, alpha1, alpha1))
 		alpha2 = cv2.merge((alpha2, alpha2, alpha2))
+
+		if details:
+			cv2.imwrite("final_mask" + str(image_data.index) + "prev.jpg", sharp_mask1)
+			cv2.imwrite("final_mask" + str(image_data.index) + "next.jpg", sharp_mask2)
 
 		final_image1 = cv2.bitwise_and(image1, image1, mask=sharp_mask1).astype(float)
 		final_image2 = cv2.bitwise_and(image2, image2, mask=sharp_mask2).astype(float)

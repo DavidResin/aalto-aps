@@ -2,6 +2,7 @@ import cv2, imutils
 import numpy as np
 from matplotlib import pyplot as plt
 
+# Returns the outer edge of the given mask
 def outerEdge(image):
 	kernel = np.array([[0, .25, 0], [.25, 0, .25], [0, .25, 0]])
 	temp1 = cv2.filter2D(image, -1, kernel)
@@ -9,26 +10,29 @@ def outerEdge(image):
 	ret, border = cv2.threshold(temp2, 10, 255, cv2.THRESH_BINARY)
 	return border
 
+# Returns the inner edge of the given mask
 def innerEdge(image):
 	reverse = cv2.bitwise_not(image)
 	return outerEdge(reverse)
 
+# Adds its outer edge to the given mask
 def expand(image, index):
 	temp = np.zeros(image.shape, dtype=np.uint8)
 	temp[image == index] = 255
 	temp = outerEdge(temp)
 	image[temp == 255] = index
 
+# Gets the distance between two points
 def distance(p1, p2):
 	x1, y1 = p1
 	x2, y2 = p2
 
 	return (x1 - x2)**2 + (y1 - y2)**2
 
-def watershed(image, mask, edges, center1, center2):
+# Applies watershed labeling to the given difference image
+def watershed(image, mask, edges, center1, center2, details, index):
 	kernel = np.ones((3, 3), np.uint8)
 	imageColor = cv2.cvtColor(image,cv2.COLOR_GRAY2BGR)
-
 
 	ret, thresh = cv2.threshold(image, 1, 255, cv2.THRESH_BINARY)
 	opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
@@ -45,16 +49,17 @@ def watershed(image, mask, edges, center1, center2):
 	temp = np.copy(markers)
 	markers = cv2.watershed(imageColor, markers)
 	markers[mask == 0] = -1
-	'''
-	plt.subplot(2, 3, 1), plt.imshow(image)
-	plt.subplot(2, 3, 2), plt.imshow(opening)
-	plt.subplot(2, 3, 3), plt.imshow(dist_transform)
-	plt.subplot(2, 3, 4), plt.imshow(sure_fg)
-	plt.subplot(2, 3, 5), plt.imshow(temp)
-	plt.subplot(2, 3, 6), plt.imshow(markers)
-	plt.tight_layout()
-	plt.show()
-	'''
+
+	if details:
+		plt.subplot(2, 3, 1), plt.title("Difference"), plt.imshow(image)
+		plt.subplot(2, 3, 2), plt.title("Opening"), plt.imshow(opening)
+		plt.subplot(2, 3, 3), plt.title("Distance Transform"), plt.imshow(dist_transform)
+		plt.subplot(2, 3, 4), plt.title("Foreground"), plt.imshow(sure_fg)
+		plt.subplot(2, 3, 5), plt.title("Old markers"), plt.imshow(temp)
+		plt.subplot(2, 3, 6), plt.title("Markers"), plt.imshow(markers)
+		plt.tight_layout()
+		plt.savefig("watershed" + str(index) + ".png")
+	
 	cut_mask = np.zeros(mask.shape, dtype=np.uint8)
 	cut_mask[markers == 0] = 255
 
@@ -81,6 +86,7 @@ def watershed(image, mask, edges, center1, center2):
 
 	return cv2.bitwise_and(mask, cut_mask), cv2.bitwise_and(mask, cv2.bitwise_not(cut_mask))
 
+# Returns the centers of two given masks
 def center(mask1, mask2):
 	points1 = list(zip(*np.where(cv2.bitwise_and(mask1, outerEdge(mask2)) == 255)))
 	center1 = tuple(map(lambda y: int(round(sum(y) / float(len(y)))), zip(*points1)))
@@ -88,7 +94,8 @@ def center(mask1, mask2):
 	center2 = tuple(map(lambda y: int(round(sum(y) / float(len(y)))), zip(*points2)))
 	return center1, center2
 
-def cut(image1, image2, mask1, mask2):
+# Applies watershed labeling to the given images and returns the best cut of the intersection
+def cut(image1, image2, mask1, mask2, details, index):
 	kernel = np.ones((5, 5), np.float32) / 25
 	gray1 = cv2.filter2D(cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY), -1, kernel)
 	gray2 = cv2.filter2D(cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY), -1, kernel)
@@ -100,14 +107,4 @@ def cut(image1, image2, mask1, mask2):
 	diff = cv2.bitwise_and(mask, diff)
 	edges = cv2.bitwise_xor(mask1, mask2)
 
-	c1, c2 = watershed(diff, mask, edges, center1, center2)
-	'''
-	a = imutils.resize(c1, width=1000)
-	cv2.imshow("test", a)
-	cv2.waitKey(0)
-
-	a = imutils.resize(c2, width=1000)
-	cv2.imshow("test", a)
-	cv2.waitKey(0)
-	'''
-	return c1, c2
+	return watershed(diff, mask, edges, center1, center2, details, index)

@@ -1,7 +1,11 @@
 import cv2
 import numpy as np
+
 from tree import ImageTree
 
+# These functions take care of the tree formation process, finding the image couples that have the most in common
+
+# Finds the best links between images
 def solve(array, index=0):
 	shape = array.shape
 	edge_array = np.full(shape, False)
@@ -33,24 +37,29 @@ def solve(array, index=0):
 
 	return edge_array
 
+# Updates the array with a value symmetrically
 def update(array, pos, value):
 	(x, y) = pos
 	array[x][y] = value
 	array[y][x] = value
 
+# Sets an edge at pos
 def edge(pos, edge_array, cost_array):
 	update(cost_array, pos, 0)
 	update(edge_array, pos, True)
 
+# Finds the next biggest value
 def find_biggest(edge_array, cost_array):
 	pos = np.unravel_index(cost_array.argmax(), cost_array.shape)
 	return pos
 
+# Initiates the recursion to build the tree
 def edgesToTree(firstelem, array, edge_table, data_table):
 	tree = ImageTree(firstelem)
 	edge_rec(tree, array, edge_table, data_table)
 	return tree
 
+# Recursive function to build the tree, passing the homographies down the tree
 def edge_rec(tree, array, edge_table, data_table):
 	index = tree.data.index
 	line = edge_table[index].tolist()
