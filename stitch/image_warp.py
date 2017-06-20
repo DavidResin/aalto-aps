@@ -168,10 +168,6 @@ def copy_over(images, details):
 		alpha1 = cv2.merge((alpha1, alpha1, alpha1))
 		alpha2 = cv2.merge((alpha2, alpha2, alpha2))
 
-		if details:
-			cv2.imwrite("final_mask" + str(image_data.index) + "prev.jpg", sharp_mask1)
-			cv2.imwrite("final_mask" + str(image_data.index) + "next.jpg", sharp_mask2)
-
 		final_image1 = cv2.bitwise_and(image1, image1, mask=sharp_mask1).astype(float)
 		final_image2 = cv2.bitwise_and(image2, image2, mask=sharp_mask2).astype(float)
 
@@ -180,5 +176,11 @@ def copy_over(images, details):
 		
 		image1 = cv2.add(final_image1, final_image2)
 		mask1 = cv2.add(sharp_mask1, sharp_mask2)
+
+		if details:
+			cv2.imwrite("final_mask" + str(image_data.index) + "prev.jpg", sharp_mask1)
+			cv2.imwrite("final_mask" + str(image_data.index) + "next.jpg", sharp_mask2)
+			cv2.imwrite("final_image" + str(image_data.index) + "prev.jpg", final_image1)
+			cv2.imwrite("final_image" + str(image_data.index) + "next.jpg", final_image2)
 
 	return image1

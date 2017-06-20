@@ -12,7 +12,7 @@ from timeit import default_timer as timer
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--input", default="inputs/", help="Path for inputs, default is \'inputs/\'")
 ap.add_argument("-o", "--output", default="outputs/", help="Path for outputs, default is \'outputs/\'")
-ap.add_argument("-m", "--main", required=False, help="Name of the main image (defaults to first image if not specified)")
+ap.add_argument("-m", "--main", required=False, help="Name of the main image (defaults to the middle image if not specified)")
 ap.add_argument("-s", "--spherical", action='store_true', default=False, help="Generates a spherical projection instead of the standard projection")
 ap.add_argument("-d", "--details", action='store_true', default=False, help="Outputs intermediate data like masks, transformed and lens-warped images, as well as working data from the seam finder")
 ap.add_argument("-z", "--zoom", default=0.5, help="Size factor for the input images, the program can take a long time and even fail if the value is too big. Default is 0.5")
@@ -46,7 +46,7 @@ image_count = len(filenames)
 # We read the images, and set up image data elements that we put in a table
 for i in range(image_count):
 	f = filenames[i]
-	element = Image_Data(i, f, int(args["zoom"]))
+	element = Image_Data(i, f, args["zoom"])
 	images.append(element)
 	print("Found", f)
 
@@ -57,7 +57,7 @@ os.chdir(args["output"])
 
 # The main image is the first one if none was specified or found
 if mainImage is None:
-	mainImage = images[0]
+	mainImage = images[int(len(images) / 2)]
 
 # The initial transformation is the identity of course
 mainImage.matrix = np.identity(3)
@@ -86,13 +86,17 @@ print("Feature extraction complete:", str(time_features - time_images), "s")
 if args["spherical"]:
 	print("Bundle adjustment....")
 
-	adjuster = Adjuster(images, edge_array, ransacArray, args["details"])
-	adjuster.global_adjust()
-	#adjuster.individual_adjust()
-	adjuster.set_transforms()
+	try:
+		adjuster = Adjuster(images, edge_array, ransacArray, args["details"])
+		adjuster.global_adjust()
+		#adjuster.individual_adjust()
+		adjuster.set_transforms()
 
-	time_bundle = timer()
-	time_features = time_bundle
+		time_bundle = timer()
+		time_features = time_bundle
+	except:
+		sys.exit("Transformation error. Try to reduce the amount of images and/or the zoom factor.")
+		
 	print("Bundle adjustment complete:", str(time_bundle - time_features), "s")
 else:
 	for i in images:
@@ -110,21 +114,13 @@ print("Final transformations computed:", str(time_tree - time_features), "s")
 print("Warping images....")
 
 # Apply the homographies and repositioning and combine all images
-
-iw.homography_warp(images)
-
 try:
+	iw.homography_warp(images)
 	iw.position_images(images)
+	iw.apply_translation(images, args["details"])
+	result = iw.copy_over(images, args["details"])
 except:
-	sys.exit("2Transformation error. Try to reduce the amount of images and/or the zoom factor.")
-#try:
-iw.apply_translation(images, args["details"])
-#except:
-	#sys.exit("3Transformation error. Try to reduce the amount of images and/or the zoom factor.")
-try:
-	result = iw.copy_over(images[::-1], args["details"])
-except:
-	sys.exit("4Transformation error. Try to reduce the amount of images and/or the zoom factor.")
+	sys.exit("Transformation error. Try to reduce the amount of images and/or the zoom factor.")
 
 time_warp = timer()
 print("Images warped:", str(time_warp - time_tree), "s")

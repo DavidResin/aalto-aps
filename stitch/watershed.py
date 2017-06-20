@@ -55,7 +55,7 @@ def watershed(image, mask, edges, center1, center2, details, index):
 		plt.subplot(2, 3, 2), plt.title("Opening"), plt.imshow(opening)
 		plt.subplot(2, 3, 3), plt.title("Distance Transform"), plt.imshow(dist_transform)
 		plt.subplot(2, 3, 4), plt.title("Foreground"), plt.imshow(sure_fg)
-		plt.subplot(2, 3, 5), plt.title("Old markers"), plt.imshow(temp)
+		plt.subplot(2, 3, 5), plt.title("Initial markers"), plt.imshow(temp)
 		plt.subplot(2, 3, 6), plt.title("Markers"), plt.imshow(markers)
 		plt.tight_layout()
 		plt.savefig("watershed" + str(index) + ".png")
